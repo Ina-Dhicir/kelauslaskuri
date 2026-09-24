@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#161616">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Kelaus">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>Kelauslaskuri</title>
+  <style>
+    :root {
+      --bg: #161616;
+      --card: #222;
+      --field: #161616;
+      --border: #3a3a3a;
+      --text: #f2f2f2;
+      --muted: #9a9a9a;
+      --accent: #ffcc00;
+      --ok: #3ddc84;
+      --error: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    .laskuri {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      padding: 28px 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+    h1 {
+      margin: 0 0 20px;
+      font-size: 20px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    label {
+      display: block;
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .valinnainen { font-size: 12px; opacity: 0.8; }
+    input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 12px;
+      font-size: 20px;
+      color: var(--text);
+      background: var(--field);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    .tulos {
+      margin-top: 24px;
+      padding: 18px;
+      background: var(--field);
+      border-radius: 10px;
+      text-align: center;
+    }
+    .aika {
+      font-size: 34px;
+      font-weight: 700;
+      color: var(--ok);
+      font-variant-numeric: tabular-nums;
+    }
+    .aika.virhe { font-size: 16px; font-weight: 400; color: var(--error); }
+    .aika.tyhja { font-size: 16px; font-weight: 400; color: var(--muted); }
+    .lisatiedot {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .lisatiedot strong { color: var(--text); font-weight: 600; }
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      font-size: 15px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { color: var(--text); border-color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="laskuri">
+    <h1>Kelauslaskuri</h1>
+
+    <label for="pituus">Kelan pituus (m)</label>
+    <input id="pituus" type="text" inputmode="decimal" placeholder="esim. 1200" autocomplete="off">
+
+    <label for="nopeus">Kelaamisnopeus (m/min)</label>
+    <input id="nopeus" type="text" inputmode="decimal" placeholder="esim. 140" autocomplete="off">
+
+    <label for="kelattu">Jo kelattu (m) <span class="valinnainen">– valinnainen</span></label>
+    <input id="kelattu" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+
+    <div class="tulos" aria-live="polite">
+      <div class="aika tyhja" id="aika">Syötä pituus ja nopeus</div>
+      <div class="lisatiedot" id="lisatiedot"></div>
+    </div>
+
+    <button type="button" id="tyhjenna">Tyhjennä</button>
+  </main>
+
+  <script>
+    const pituusEl = document.getElementById('pituus');
+    const nopeusEl = document.getElementById('nopeus');
+    const kelattuEl = document.getElementById('kelattu');
+    const aikaEl = document.getElementById('aika');
+    const lisaEl = document.getElementById('lisatiedot');
+
+    // Hyväksyy sekä pilkun että pisteen desimaalierottimena (1200,5 tai 1200.5)
+    function luku(el) {
+      const arvo = el.value.trim().replace(/\s/g, '').replace(',', '.');
+      if (arvo === '') return null;
+      const n = Number(arvo);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function kaksi(n) { return String(n).padStart(2, '0'); }
+
+    function muotoileKesto(sekunnitYht) {
+      const h = Math.floor(sekunnitYht / 3600);
+      const min = Math.floor((sekunnitYht % 3600) / 60);
+      const s = sekunnitYht % 60;
+      return h > 0 ? `${h} h ${min} min ${s} s` : `${min} min ${s} s`;
+    }
+
+    function nayta(teksti, tila) {
+      aikaEl.textContent = teksti;
+      aikaEl.className = 'aika' + (tila ? ' ' + tila : '');
+    }
+
+    function laske() {
+      const pituus = luku(pituusEl);
+      const nopeus = luku(nopeusEl);
+      const kelattu = luku(kelattuEl) ?? 0;
+      lisaEl.innerHTML = '';
+
+      if (pituus === null || nopeus === null) {
+        nayta('Syötä pituus ja nopeus', 'tyhja');
+        return;
+      }
+      if (Number.isNaN(pituus) || Number.isNaN(nopeus) || Number.isNaN(kelattu)) {
+        nayta('Tarkista luvut – vain numerot sallittu.', 'virhe');
+        return;
+      }
+      if (pituus <= 0 || nopeus <= 0 || kelattu < 0) {
+        nayta('Arvojen on oltava suurempia kuin 0.', 'virhe');
+        return;
+      }
+      if (kelattu > pituus) {
+        nayta('Jo kelattu ei voi olla yli kelan pituuden.', 'virhe');
+        return;
+      }
+
+      const jaljella = pituus - kelattu;
+      // Pyöristetään kokonaisiin sekunteihin, jolloin "60 s" ei voi syntyä
+      const sekunnit = Math.round((jaljella / nopeus) * 60);
+      nayta(muotoileKesto(sekunnit));
+
+      const valmis = new Date(Date.now() + sekunnit * 1000);
+      const kello = `${kaksi(valmis.getHours())}:${kaksi(valmis.getMinutes())}`;
+      const desimaaliMin = (jaljella / nopeus).toFixed(1).replace('.', ',');
+
+      lisaEl.innerHTML =
+        `= ${desimaaliMin} min<br>` +
+        (kelattu > 0 ? `Jäljellä <strong>${jaljella.toLocaleString('fi-FI')} m</strong><br>` : '') +
+        `Valmis noin klo <strong>${kello}</strong>`;
+
+      try { localStorage.setItem('kelaus.nopeus', nopeusEl.value); } catch (e) {}
+    }
+
+    [pituusEl, nopeusEl, kelattuEl].forEach(el => el.addEventListener('input', laske));
+
+    document.getElementById('tyhjenna').addEventListener('click', () => {
+      pituusEl.value = '';
+      kelattuEl.value = '';
+      laske();
+      pituusEl.focus();
+    });
+
+    // Muistaa viimeksi käytetyn nopeuden
+    try {
+      const tallennettu = localStorage.getItem('kelaus.nopeus');
+      if (tallennettu) nopeusEl.value = tallennettu;
+    } catch (e) {}
+
+    // Päivittää valmistumiskellonajan 30 s välein
+    setInterval(laske, 30000);
+    laske();
+
+    // Offline-tuki: sivu toimii ilman verkkoa ensimmäisen avauksen jälkeen
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
