@@ -1,5 +1,5 @@
 // Vaihda versio aina kun tiedostoja päivitetään, jotta puhelin hakee uudet
-const VERSIO = 'kelaus-v1';
+const VERSIO = 'kelaus-v2';
 const TIEDOSTOT = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
